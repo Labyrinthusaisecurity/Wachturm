@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────
+# cert-canary — .gitignore
+# ─────────────────────────────────────────────
+
+
+# ── Credentials & secrets ─────────────────────
+# These may contain webhook URLs, SMTP passwords,
+# and PagerDuty keys. Never commit these.
+.env
+canary.json
+
+
+# ── Host lists (may contain internal hostnames) ──
+# Uncomment if your hosts.txt contains internal
+# infrastructure you don't want public.
+# hosts.txt
+
+
+# ── Scan output & audit logs ──────────────────
+*.jsonl
+*.log
+scan_*.json
+results_*.json
+
+
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+.installed.cfg
+lib/
+lib64/
+
+
+# ── Virtual environments ──────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env.bak
+
+
+# ── Testing & coverage ────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+
+# ── Type checking ─────────────────────────────
+.mypy_cache/
+.dmypy.json
+.pytype/
+
+
+# ── IDEs & editors ────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Desktop.ini
+$RECYCLE.BIN/

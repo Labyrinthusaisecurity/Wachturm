@@ -1,0 +1,134 @@
+# .github/workflows/test.yml
+# ─────────────────────────────────────────────
+# Runs the full test suite on every push and pull request.
+# Matrix tests across Python 3.8, 3.10, and 3.12.
+# ─────────────────────────────────────────────
+
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false           # run all matrix jobs even if one fails
+      matrix:
+        python-version: ["3.8", "3.10", "3.12"]
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Confirm stdlib only — no pip install needed
+        run: |
+          python3 -c "
+          import ssl, socket, smtplib, json, argparse,
+                 concurrent.futures, dataclasses, datetime,
+                 urllib.request, email.mime.multipart
+          print('All stdlib imports ok')
+          "
+
+      - name: Install test dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --verbose \
+            --tb=short \
+            --cov=cert_canary \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=80
+
+      - name: Upload coverage report
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Python:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**OS:** ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linters
+        run: |
+          pip install ruff mypy
+
+      - name: Ruff — lint and format check
+        run: |
+          ruff check cert_canary/ main.py
+          ruff format --check cert_canary/ main.py
+
+      - name: Mypy — type checking
+        run: |
+          mypy cert_canary/ main.py \
+            --ignore-missing-imports \
+            --no-strict-optional
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Bandit — static security analysis
+        run: |
+          bandit -r cert_canary/ main.py \
+            --severity-level medium \
+            --confidence-level medium \
+            -f txt

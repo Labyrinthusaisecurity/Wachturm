@@ -1,0 +1,131 @@
+# /etc/systemd/system/cert-canary.service
+# ─────────────────────────────────────────────
+# cert-canary systemd service unit.
+# Runs cert-canary in daemon mode (continuous sweep loop).
+#
+# Install:
+#   sudo cp deploy/cert-canary.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable cert-canary
+#   sudo systemctl start cert-canary
+#
+# Useful commands:
+#   sudo systemctl status cert-canary
+#   sudo systemctl restart cert-canary
+#   sudo journalctl -u cert-canary -f
+#   sudo journalctl -u cert-canary --since "1 hour ago"
+# ─────────────────────────────────────────────
+
+[Unit]
+Description=cert-canary SSL/TLS certificate monitor
+Documentation=https://github.com/yourname/cert-canary
+# Don't start until the network is fully up and DNS works.
+# network-online.target is stronger than network.target —
+# it waits for interfaces to have IP addresses, not just be up.
+After=network-online.target
+Wants=network-online.target
+
+
+[Service]
+# ── Identity ──────────────────────────────────
+# Run as a dedicated low-privilege user.
+# Create with: sudo useradd --system --no-create-home canary
+Type=simple
+User=canary
+Group=canary
+WorkingDirectory=/opt/cert-canary
+
+
+# ── Credentials ───────────────────────────────
+# Load alert channel secrets from a separate file.
+# /opt/cert-canary/.env is owned by root, readable by canary only.
+# Never put secrets in this unit file — it is world-readable.
+#
+# Create .env:
+#   sudo cp /opt/cert-canary/.env.example /opt/cert-canary/.env
+#   sudo chown root:canary /opt/cert-canary/.env
+#   sudo chmod 640 /opt/cert-canary/.env
+EnvironmentFile=/opt/cert-canary/.env
+
+
+# ── Command ───────────────────────────────────
+ExecStart=/usr/bin/python3 /opt/cert-canary/main.py \
+    --config /opt/cert-canary/canary.json \
+    --json-out /var/log/cert-canary/audit.jsonl
+
+# Reload hosts.txt and canary.json without restarting
+# (cert-canary re-reads config on each sweep so a HUP is enough)
+ExecReload=/bin/kill -HUP $MAINPID
+
+
+# ── Restart policy ────────────────────────────
+# Restart on crash or non-zero exit, but not on clean exit (code 0)
+# or when stopped with systemctl stop.
+Restart=on-failure
+RestartSec=30
+# Give up restarting after 5 failures in 10 minutes.
+# Prevents a misconfigured canary from hammering the network.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+
+# ── Timeouts ──────────────────────────────────
+# How long systemctl start/stop wait before giving up.
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+
+# ── Logging ───────────────────────────────────
+# stdout and stderr go to journald automatically.
+# Read with: journalctl -u cert-canary -f
+# Prefix each line with timestamp (journald adds this too,
+# but having it in the log line itself helps with grep).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cert-canary
+
+
+# ── Hardening ─────────────────────────────────
+# Lock down what the process can do.
+# These are all safe for a network-scanning Python script.
+
+# Filesystem restrictions
+ProtectSystem=strict               # mount / and /usr read-only
+ProtectHome=true                   # no access to /home, /root, /run/user
+ReadWritePaths=/var/log/cert-canary /opt/cert-canary
+PrivateTmp=true                    # private /tmp, invisible to other processes
+
+# Capability restrictions
+NoNewPrivileges=true               # cannot gain privileges via setuid/setgid
+CapabilityBoundingSet=             # drop ALL Linux capabilities
+AmbientCapabilities=               # no ambient capabilities
+
+# System call filtering
+# cert-canary only needs basic network + file I/O syscalls.
+# @system-service is a curated set safe for most services.
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Network
+# cert-canary needs outbound TCP (scanning + webhooks).
+# It never needs to listen on a port.
+RestrictAddressFamilies=AF_INET AF_INET6
+IPAddressAllow=any                 # outbound to any IP
+
+# Misc isolation
+PrivateDevices=true                # no access to /dev devices
+RestrictRealtime=true              # no real-time scheduling
+RestrictSUIDSGID=true              # cannot create SUID/SGID files
+LockPersonality=true               # cannot change execution domain
+MemoryDenyWriteExecute=true        # no writable+executable memory pages
+ProtectKernelTunables=true         # cannot modify kernel variables
+ProtectKernelModules=true          # cannot load kernel modules
+ProtectControlGroups=true          # cannot modify cgroups
+ProtectKernelLogs=true             # cannot read kernel log buffer
+ProtectClock=true                  # cannot change system clock
+
+
+[Install]
+# Start cert-canary automatically when reaching multi-user mode
+# (i.e. normal system boot, before graphical login).
+WantedBy=multi-user.target

@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────
+# cert-canary — hosts.txt
+# One host per line. Port optional (default 443).
+# Lines starting with # are ignored.
+# ─────────────────────────────────────────────
+
+
+# ── Production ────────────────────────────────
+example.com
+www.example.com
+api.example.com
+shop.example.com
+cdn.example.com
+
+
+# ── Non-standard ports ────────────────────────
+admin.example.com:8443
+internal.example.com:4433
+metrics.example.com:9443
+
+
+# ── Staging ───────────────────────────────────
+staging.example.com
+staging-api.example.com
+preview.example.com
+
+
+# ── Third-party / vendor ──────────────────────
+# Certs you don't control but depend on.
+# Alert early so you can chase the vendor.
+payments.vendor.com
+auth.partner-sso.com
+cdn.third-party.io
+
+
+# ── Internal / self-signed ────────────────────
+# These will flag as self-signed — expected.
+vault.internal.corp:8200
+k8s-api.internal.corp:6443
+grafana.internal.corp:3000
+
+
+# ── Temporarily disabled ──────────────────────
+# legacy.example.com       (decommissioned Q1)
+# old-api.example.com      (migrated to api.example.com)

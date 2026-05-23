@@ -1,0 +1,88 @@
+# .github/workflows/cert-check.yml
+# ─────────────────────────────────────────────
+# Scheduled SSL certificate sweep.
+# Runs daily at 08:00 UTC and on every push to main.
+# Alerts fire via whatever channels are configured in secrets.
+# ─────────────────────────────────────────────
+
+name: Certificate Check
+
+on:
+  schedule:
+    - cron: "0 8 * * *"       # daily at 08:00 UTC
+  push:
+    branches:
+      - main
+  workflow_dispatch:           # allow manual trigger from GitHub UI
+
+jobs:
+  scan:
+    name: Scan certificates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify no dependencies needed
+        run: python3 -c "import ssl, socket, smtplib; print('stdlib ok')"
+
+      - name: Write hosts file
+        run: |
+          # hosts.txt is committed to the repo.
+          # This step is a no-op but makes the pipeline
+          # explicit about where the host list comes from.
+          echo "Using hosts.txt from repository root"
+          cat hosts.txt
+
+      - name: Run cert-canary
+        id: scan
+        env:
+          CANARY_SLACK_WEBHOOK:   ${{ secrets.CANARY_SLACK_WEBHOOK }}
+          CANARY_DISCORD_WEBHOOK: ${{ secrets.CANARY_DISCORD_WEBHOOK }}
+          CANARY_PAGERDUTY_KEY:   ${{ secrets.CANARY_PAGERDUTY_KEY }}
+          CANARY_WEBHOOK_URL:     ${{ secrets.CANARY_WEBHOOK_URL }}
+          CANARY_WEBHOOK_SECRET:  ${{ secrets.CANARY_WEBHOOK_SECRET }}
+        run: |
+          python3 main.py \
+            --hosts hosts.txt \
+            --once \
+            --verbose \
+            --json-out scan-results.jsonl
+        continue-on-error: true   # don't fail the workflow on cert warnings —
+                                  # alerts handle notification, exit code is for humans
+
+      - name: Check exit code
+        run: |
+          code="${{ steps.scan.outcome }}"
+          echo "Scan outcome: $code"
+          if [ "$code" = "failure" ]; then
+            echo "::warning::cert-canary exited with errors — check scan-results.jsonl"
+          fi
+
+      - name: Upload scan results
+        if: always()             # upload even if scan found critical certs
+        uses: actions/upload-artifact@v4
+        with:
+          name: cert-scan-${{ github.run_number }}
+          path: scan-results.jsonl
+          retention-days: 90
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Certificate Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f scan-results.jsonl ]; then
+            echo "Results saved to artifact \`cert-scan-${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          fi

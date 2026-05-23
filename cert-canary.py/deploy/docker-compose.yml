@@ -1,0 +1,120 @@
+# deploy/docker-compose.yml
+# ─────────────────────────────────────────────
+# cert-canary Docker Compose configuration.
+# Runs cert-canary in daemon mode as a single container.
+#
+# Quick start:
+#   cp .env.example .env           # fill in alert credentials
+#   cp canary.json.example canary.json  # fill in hosts + config
+#   docker compose up -d
+#
+# Useful commands:
+#   docker compose up -d           # start in background
+#   docker compose logs -f         # follow logs
+#   docker compose restart         # restart after config change
+#   docker compose down            # stop and remove container
+#   docker compose pull            # update to latest image
+# ─────────────────────────────────────────────
+
+services:
+  cert-canary:
+    build:
+      context: ..                  # repo root (where Dockerfile lives)
+      dockerfile: deploy/Dockerfile
+
+    image: cert-canary:latest
+
+    container_name: cert-canary
+
+    restart: unless-stopped        # restart on crash, not on docker stop
+
+    # ── Credentials ─────────────────────────────
+    # Load alert channel secrets from .env file.
+    # .env is in .gitignore — never commit it.
+    env_file:
+      - ../.env
+
+    # ── Config & host list ───────────────────────
+    # Mount canary.json and hosts.txt as read-only volumes.
+    # Edit them on the host and restart the container to apply.
+    volumes:
+      - ../canary.json:/app/canary.json:ro
+      - ../hosts.txt:/app/hosts.txt:ro
+      - cert-canary-logs:/var/log/cert-canary
+
+    # ── Command ──────────────────────────────────
+    command: >
+      python3 main.py
+        --config /app/canary.json
+        --json-out /var/log/cert-canary/audit.jsonl
+
+    # ── Resource limits ──────────────────────────
+    # cert-canary is lightweight — scanning is I/O bound,
+    # not CPU or memory bound. These are generous ceilings.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+
+    # ── Healthcheck ──────────────────────────────
+    # Confirms the process is alive and the last sweep completed.
+    # Checks for a recent line in the audit log — if the log
+    # hasn't been written in 2x the sweep interval, something is wrong.
+    healthcheck:
+      test: >
+        ["CMD", "python3", "-c",
+         "import os, time, json;
+          f='/var/log/cert-canary/audit.jsonl';
+          lines=open(f).readlines() if os.path.exists(f) else [];
+          last=json.loads(lines[-1]) if lines else {};
+          ts=last.get('timestamp','');
+          age=time.time()-__import__('datetime').datetime.fromisoformat(ts.rstrip('Z')).timestamp() if ts else 9999;
+          exit(0 if age < 7200 else 1)"]
+      interval: 30m
+      timeout: 10s
+      retries: 3
+      start_period: 60s            # give the first sweep time to complete
+
+    # ── Security ─────────────────────────────────
+    # Drop all Linux capabilities — cert-canary needs none.
+    # Read-only root filesystem with explicit tmpfs for Python's
+    # bytecode cache and any runtime temp files.
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /root/.cache:size=16m      # Python bytecode cache
+
+    # ── Network ──────────────────────────────────
+    # cert-canary only needs outbound internet access.
+    # No ports are exposed — it never listens on anything.
+    networks:
+      - outbound
+
+    # ── Logging ──────────────────────────────────
+    # json-file driver with rotation so logs don't fill the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+# ── Named volumes ──────────────────────────────
+# audit.jsonl persists across container restarts and rebuilds.
+volumes:
+  cert-canary-logs:
+    driver: local
+
+# ── Networks ───────────────────────────────────
+networks:
+  outbound:
+    driver: bridge

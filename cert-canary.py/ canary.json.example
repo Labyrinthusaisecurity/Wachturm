@@ -1,0 +1,48 @@
+{
+  "_comment": "Copy this file to canary.json and fill in your values.",
+  "_comment2": "canary.json is in .gitignore — never commit real credentials.",
+  "_comment3": "Run: python3 main.py --config canary.json",
+
+  "hosts": [
+    "example.com",
+    "www.example.com",
+    "api.example.com:8443",
+    "staging.example.com"
+  ],
+
+  "thresholds": {
+    "_comment": "Days remaining before cert is graded at each level.",
+    "critical": 7,
+    "warning":  30,
+    "info":     60
+  },
+
+  "threads":   10,
+  "interval":  3600,
+  "timeout":   8,
+  "once":      false,
+
+  "slack_webhook":   "https://hooks.slack.com/services/TXXXXXXXX/BXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX",
+  "discord_webhook": "https://discord.com/api/webhooks/000000000000000000/XXXXXXXXXXXX",
+  "pagerduty_key":   "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "webhook_url":     "https://your-endpoint.example.com/hooks/certs",
+  "webhook_secret":  "a-long-random-string-you-generate",
+
+  "smtp": {
+    "_comment": "Remove this block entirely if you are not using email alerts.",
+
+    "host":     "smtp.gmail.com",
+    "port":     587,
+    "starttls": true,
+    "ssl":      false,
+
+    "user":     "you@gmail.com",
+    "password": "your-app-password-not-your-real-password",
+
+    "from":     "cert-canary@example.com",
+    "to": [
+      "ops@example.com",
+      "security@example.com"
+    ]
+  }
+}

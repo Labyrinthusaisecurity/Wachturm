@@ -1,0 +1,51 @@
+# /etc/cron.d/cert-canary
+# ─────────────────────────────────────────────
+# cert-canary scheduled certificate sweep.
+# Drop this file into /etc/cron.d/ — no crontab editing needed.
+#
+# Install:
+#   sudo cp deploy/cert-canary-cron /etc/cron.d/cert-canary
+#   sudo chmod 644 /etc/cron.d/cert-canary
+#
+# Verify it loaded:
+#   sudo crontab -l
+#   grep cert-canary /var/log/syslog
+# ─────────────────────────────────────────────
+
+# Run as this user — change to your deploy user
+CERT_CANARY_USER=canary
+
+# Install directory
+CERT_CANARY_DIR=/opt/cert-canary
+
+# Python binary — use full path so cron's minimal PATH works
+PYTHON=/usr/bin/python3
+
+# Alert channel credentials — loaded from .env
+# These are read by cert-canary via os.environ, not shell export
+CANARY_SLACK_WEBHOOK=https://hooks.slack.com/services/TXXXXXXXX/BXXXXXXXX/XXXXXXXX
+CANARY_DISCORD_WEBHOOK=https://discord.com/api/webhooks/000000000000/XXXXXXXXXX
+CANARY_PAGERDUTY_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+CANARY_WEBHOOK_URL=https://your-endpoint.example.com/hooks/certs
+
+# ─────────────────────────────────────────────
+# Schedule
+# ─────────────────────────────────────────────
+#
+# Format:
+#   min  hour  dom  month  dow  user  command
+#
+# Runs every 6 hours at :00 — adjust to taste.
+# Common intervals:
+#   Every hour:    0 * * * *
+#   Every 6 hours: 0 */6 * * *
+#   Every 12 hours: 0 */12 * * *
+#   Daily at 08:00 UTC: 0 8 * * *
+#   Daily at 08:00 and 20:00: 0 8,20 * * *
+# ─────────────────────────────────────────────
+
+0 */6 * * * canary /usr/bin/python3 /opt/cert-canary/main.py \
+    --hosts /opt/cert-canary/hosts.txt \
+    --once \
+    --json-out /var/log/cert-canary/audit.jsonl \
+    >> /var/log/cert-canary/canary.log 2>&1
