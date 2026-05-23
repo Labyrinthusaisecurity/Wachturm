@@ -5,7 +5,9 @@ A collection of offensive & defensive scripts for auditing, monitoring, and hard
 <div align="center">
 
 ```
-<img width="1756" height="896" alt="ChatGPT Image May 23, 2026 at 06_38_19 PM" src="https://github.com/user-attachments/assets/02d78ef8-ac8c-4612-bbd1-36578bced693" />
+<p align="center">
+  <img src="https://raw.githubusercontent.com/YOUR-USERNAME/YOUR-REPO/main/wachturm-logo.png" alt="Wachturm Logo" width="300"/>
+</p>
 
 ```
 
