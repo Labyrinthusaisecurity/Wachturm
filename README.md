@@ -7,7 +7,6 @@ A collection of offensive & defensive scripts for auditing, monitoring, and hard
   <img src="https://raw.githubusercontent.com/YOUR-USERNAME/YOUR-REPO/main/wachturm-logo.png" alt="Wachturm Logo" width="300"/>
 </p>
 
-
 **The watchtower that never sleeps.**
 
 *Wachturm (German: watchtower) — a suite of SSL/TLS security tools*
