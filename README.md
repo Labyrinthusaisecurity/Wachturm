@@ -5,7 +5,8 @@ A collection of offensive & defensive scripts for auditing, monitoring, and hard
 <div align="center">
 
 ```
-<img width="1756" height="896" alt="ChatGPT Image May 23, 2026 at 06_38_19 PM" src="https://github.com/user-attachments/assets/526ba0a4-a361-432f-9917-11969fc03074" />
+<img width="1756" height="896" alt="ChatGPT Image May 23, 2026 at 06_38_19 PM" src="https://github.com/user-attachments/assets/02d78ef8-ac8c-4612-bbd1-36578bced693" />
+
 ```
 
 **The watchtower that never sleeps.**
