@@ -2,7 +2,6 @@
 SSL/TLS Security Suite
 A collection of offensive & defensive scripts for auditing, monitoring, and hardening TLS configurations.
 
-<div align="center">
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/YOUR-USERNAME/YOUR-REPO/main/wachturm-logo.png" alt="Wachturm Logo" width="300"/>
