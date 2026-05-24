@@ -2,7 +2,8 @@
 SSL/TLS Security Suite
 A collection of offensive & defensive scripts for auditing, monitoring, and hardening TLS configurations.
 
-<img width="1756" height="896" alt="ChatGPT Image May 23, 2026 at 06_38_19 PM" src="https://github.com/user-attachments/assets/1ee44ecf-0a16-4f1c-b81b-423955629ee1" />
+<img width="1756" height="660" alt="wachturm_logo_cropped_v2" src="https://github.com/user-attachments/assets/82fa7113-a1df-4538-bc55-bcbf86e08a3f" />
+
 
 
 **The watchtower that never sleeps.**
